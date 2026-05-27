@@ -127,6 +127,22 @@ def find_peaks(spec, neighborhood_freq=PEAK_NEIGHBORHOOD_FREQ,
     # STEP 1: For each time frame, pick the loudest bin per band
     # -------------------------------------------------------------- #
     band_peaks = set()
+    for t in range(n_time):
+        for lo, hi in freq_bands:
+            hi = min(hi, n_freq)  # Clamp hi to n_freq
+            if lo >= n_freq:
+                continue  # Skip if band is out of range
+            band_slice = spec[lo:hi, t]
+            f_local = np.argmax(band_slice)
+            f_global = lo + f_local
+            if spec[f_global, t] > threshold:
+                band_peaks.add((t, f_global))
+                
+            local_max = maximum_filter(spec[:, t], size=neighborhood_freq)
+            if spec[f_global, t] == local_max[f_global]:
+                band_peaks.add((t, f_global))
+            return list(band_peaks)
+            
 
     # TODO: Implement band-based peak selection
     #
@@ -139,8 +155,7 @@ def find_peaks(spec, neighborhood_freq=PEAK_NEIGHBORHOOD_FREQ,
     #     - Convert back to a global frequency index: f_global = lo + f_local
     #     - If spec[f_global, t] > threshold, add (t, f_global) to band_peaks
 
-    raise NotImplementedError("Implement Step 1 of find_peaks()")
-
+   
     # -------------------------------------------------------------- #
     # STEP 2: Apply local-max filter to remove redundant peaks
     # -------------------------------------------------------------- #
@@ -155,7 +170,7 @@ def find_peaks(spec, neighborhood_freq=PEAK_NEIGHBORHOOD_FREQ,
     #
     # 3. Return the filtered peaks as a list of (int(t), int(f)) tuples
 
-    raise NotImplementedError("Implement Step 2 of find_peaks()")
+    r
 
 
 # ------------------------------------------------------------------ #
@@ -205,7 +220,7 @@ def hash_peak_pair(f1, f2, dt):
     #
     # h = (f1 << (FREQ_BITS + DELTA_BITS)) | (f2 << DELTA_BITS) | dt
 
-    raise NotImplementedError("Implement hash_peak_pair()")
+    return (f1 << (FREQ_BITS + DELTA_BITS)) | (f2 << DELTA_BITS) | dt
 
 
 # ------------------------------------------------------------------ #
@@ -264,7 +279,20 @@ def generate_fingerprints(peaks, fan_out=FAN_OUT,
     #     paired += 1
     #     if paired >= fan_out: break
 
-    raise NotImplementedError("Implement generate_fingerprints()")
+    for i, (t1, f1) in enumerate(peaks):
+        paired = 0
+        for j in range(i + 1, len(peaks)):
+            t2, f2 = peaks[j]
+            dt = t2 - t1
+            if dt < zone_start:
+                continue
+            if dt > zone_end:
+                break
+            h = hash_peak_pair(f1, f2, dt)
+            fingerprints.append((h, t1))
+            paired += 1
+            if paired >= fan_out:
+                break
 
     return fingerprints
 
